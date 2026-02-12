@@ -1,2 +1,3 @@
 // frontend/config.js
-const BACKEND_BASE_URL = "http://35.247.124.10";
+const BACKEND_BASE_URL = "http://136.118.255.98:5000
+;
