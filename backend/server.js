@@ -1,60 +1,168 @@
-const express = require('express');
-const cors = require('cors');        // Import cors
-const bcrypt = require('bcrypt');
-const { Storage } = require('@google-cloud/storage');
-const fs = require('fs');
+const express = require("express");
+const cors = require("cors");
+const bcrypt = require("bcrypt");
+const { Storage } = require("@google-cloud/storage");
+const fs = require("fs");
+const path = require("path");
 
-// Declare app first
 const app = express();
 
-// Then use middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
-
-// GCS client (uses VM service account automatically)
 const storage = new Storage();
-const bucketName = 'user-data-bucket-shreyas';
-const fileName = 'users.csv';
+const bucketName = "user-data-bucket-shreyas";
+const fileName = "users.csv";
 
-// Create CSV header if file not exists
+const bucket = storage.bucket(bucketName);
+const file = bucket.file(fileName);
+
+const tempPath = path.join("/tmp", fileName);
+
+// Ensure CSV exists
 async function ensureCSV() {
-  const bucket = storage.bucket(bucketName);
-  const file = bucket.file(fileName);
-
   const [exists] = await file.exists();
   if (!exists) {
-    await file.save('username,password_hash,login_time\n');
+    await file.save("username,password_hash,is_logged_in\n");
   }
 }
 
-// Login endpoint
-app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+// Download CSV
+async function downloadCSV() {
+  await ensureCSV();
+  await file.download({ destination: tempPath });
+}
 
-  if (!username || !password) {
-    return res.status(400).send('Missing fields');
+// Upload CSV
+async function uploadCSV() {
+  await file.save(fs.readFileSync(tempPath));
+}
+
+// Parse CSV
+function parseCSV() {
+  const data = fs.readFileSync(tempPath, "utf-8");
+  const lines = data.trim().split("\n").slice(1);
+  const users = {};
+
+  for (const line of lines) {
+    const [username, hash, loggedIn] = line.split(",");
+    users[username] = {
+      hash,
+      loggedIn: loggedIn === "true"
+    };
   }
 
-  const hash = await bcrypt.hash(password, 10);
-  const row = `${username},${hash},${new Date().toISOString()}\n`;
+  return users;
+}
 
-  const bucket = storage.bucket(bucketName);
-  const file = bucket.file(fileName);
+// Write CSV from object
+function writeCSV(users) {
+  let content = "username,password_hash,is_logged_in\n";
 
-  await ensureCSV();
+  for (const username in users) {
+    content += `${username},${users[username].hash},${users[username].loggedIn}\n`;
+  }
 
-  // Append row
-  const temp = `/tmp/${fileName}`;
-  await file.download({ destination: temp });
-  fs.appendFileSync(temp, row);
-  await file.save(fs.readFileSync(temp));
+  fs.writeFileSync(tempPath, content);
+}
 
-  res.send('Login saved');
+// ===== REGISTER =====
+app.post("/register", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password)
+      return res.status(400).send("Missing fields");
+
+    await downloadCSV();
+    const users = parseCSV();
+
+    if (users[username])
+      return res.status(400).send("User already exists");
+
+    const hash = await bcrypt.hash(password, 10);
+
+    users[username] = {
+      hash,
+      loggedIn: false
+    };
+
+    writeCSV(users);
+    await uploadCSV();
+
+    res.send("Registration successful");
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
+  }
 });
 
-app.listen(3000, '0.0.0.0', () => {
-  console.log('Backend running on port 3000');
+// ===== LOGIN =====
+app.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password)
+      return res.status(400).send("Missing fields");
+
+    await downloadCSV();
+    const users = parseCSV();
+
+    if (!users[username])
+      return res.status(401).send("Invalid credentials");
+
+    if (users[username].loggedIn)
+      return res.status(403).send("User already logged in");
+
+    const match = await bcrypt.compare(password, users[username].hash);
+
+    if (!match)
+      return res.status(401).send("Invalid credentials");
+
+    users[username].loggedIn = true;
+
+    writeCSV(users);
+    await uploadCSV();
+
+    res.send("Login successful");
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
+  }
+});
+
+// ===== LOGOUT =====
+app.post("/logout", async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    if (!username)
+      return res.status(400).send("Missing username");
+
+    await downloadCSV();
+    const users = parseCSV();
+
+    if (!users[username])
+      return res.status(400).send("User not found");
+
+    users[username].loggedIn = false;
+
+    writeCSV(users);
+    await uploadCSV();
+
+    res.send("Logged out successfully");
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
+  }
+});
+
+const PORT = process.env.PORT || 8080;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
