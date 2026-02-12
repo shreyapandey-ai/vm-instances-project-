@@ -1,104 +1,192 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Login</title>
-  <style>
-    body {
-      background: #f0f4f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      font-family: Arial, sans-serif;
-      margin: 0;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-    .card {
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-      text-align: center;
-      width: 300px;
-    }
+<style>
+* {
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+}
 
-    input[type=text], input[type=password] {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #141e30, #243b55);
+}
 
-    button {
-      width: 100%;
-      padding: 10px;
-      background: #3498db;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 16px;
-    }
+.card {
+  width: 400px;
+  padding: 40px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+  color: white;
+  transition: 0.4s ease;
+}
 
-    button:hover {
-      background: #2980b9;
-    }
+h1 {
+  margin-bottom: 10px;
+}
 
-    h1 {
-      color: #2c3e50;
-    }
+p {
+  margin-bottom: 25px;
+  opacity: 0.7;
+  font-size: 14px;
+}
 
-    p {
-      color: #34495e;
-      font-size: 16px;
-    }
-  </style>
+input {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 15px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  font-size: 14px;
+}
+
+input::placeholder {
+  color: rgba(255,255,255,0.6);
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+.toggle {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.error {
+  margin-top: 15px;
+  font-size: 13px;
+  color: #ff6b6b;
+  display: none;
+}
+
+.success {
+  text-align: center;
+}
+</style>
 </head>
+
 <body>
 
-<div class="card" id="loginCard">
-  <h2>Login Form</h2>
+<div class="card" id="card">
+  <h1 id="title">Login</h1>
+  <p id="subtitle">Sign in to your account</p>
 
-  <form id="loginForm">
-    <input type="text" id="username" placeholder="Username" required><br>
-    <input type="password" id="password" placeholder="Password" required><br>
-    <button type="submit">Login</button>
+  <form id="form">
+    <input type="text" id="username" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button type="submit" id="submitBtn">Login</button>
   </form>
+
+  <div class="error" id="messageBox"></div>
+
+  <div class="toggle" id="toggleMode">
+    Don't have an account? Register
+  </div>
 </div>
 
-<script src="config.js"></script>
 <script>
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
+const BACKEND_BASE_URL = "http://136.118.255.98:8080";
+
+let isLogin = true;
+
+const form = document.getElementById("form");
+const title = document.getElementById("title");
+const subtitle = document.getElementById("subtitle");
+const submitBtn = document.getElementById("submitBtn");
+const toggle = document.getElementById("toggleMode");
+const messageBox = document.getElementById("messageBox");
+const card = document.getElementById("card");
+
+toggle.addEventListener("click", () => {
+  isLogin = !isLogin;
+  messageBox.style.display = "none";
+
+  if (isLogin) {
+    title.textContent = "Login";
+    subtitle.textContent = "Sign in to your account";
+    submitBtn.textContent = "Login";
+    toggle.textContent = "Don't have an account? Register";
+  } else {
+    title.textContent = "Register";
+    subtitle.textContent = "Create a new account";
+    submitBtn.textContent = "Register";
+    toggle.textContent = "Already have an account? Login";
+  }
+});
+
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
+  messageBox.style.display = "none";
+
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  const endpoint = isLogin ? "/login" : "/register";
 
   try {
-    const res = await fetch(`${BACKEND_BASE_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch(`${BACKEND_BASE_URL}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password })
     });
 
+    const text = await res.text();
+
     if (res.ok) {
-      // Replace login form with success message
-      const card = document.getElementById('loginCard');
-      card.innerHTML = `
-        <h1>Login Successful!</h1>
-        <p>Welcome, ${username}. You have successfully logged in.</p>
-      `;
+      if (isLogin) {
+        card.innerHTML = `
+          <div class="success">
+            <h1>Welcome</h1>
+            <p>${username} logged in successfully</p>
+          </div>
+        `;
+      } else {
+        messageBox.style.color = "#00ffae";
+        messageBox.textContent = "Registration successful. You can now login.";
+        messageBox.style.display = "block";
+      }
     } else {
-      const text = await res.text();
-      alert(text);
+      messageBox.style.color = "#ff6b6b";
+      messageBox.textContent = text;
+      messageBox.style.display = "block";
     }
   } catch (err) {
-    alert("Backend not reachable");
+    messageBox.style.color = "#ff6b6b";
+    messageBox.textContent = "Backend not reachable";
+    messageBox.style.display = "block";
   }
 });
 </script>
 
 </body>
 </html>
-
