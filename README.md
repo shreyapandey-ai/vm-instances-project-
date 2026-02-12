@@ -17,16 +17,6 @@ VMs provide isolated compute environments with configurable CPU, RAM, storage, a
 
 ---
 
-## 📁 Project Structure
-
-vm-instances-project/
-├── README.md
-├── scripts/ # Automation scripts (Shell, Python, etc.)
-├── terraform/ # Terraform configs for VM provisioning
-├── examples/ # Sample VM creation & management examples
-└── .gitignore
-
-
 ---
 
 ## 🧰 Technologies Used
