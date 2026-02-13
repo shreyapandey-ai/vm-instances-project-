@@ -1,12 +1,12 @@
 
-# 📦 VM Instances Project
+#  VM Instances Project
 
 This project demonstrates how to **create, manage, and automate virtual machine (VM) instances**, primarily on **Google Cloud Compute Engine**.  
 It contains scripts, examples, and automation tools to manage VM lifecycle efficiently.
 
 ---
 
-## 🔍 Overview
+##  Overview
 
 VMs provide isolated compute environments with configurable CPU, RAM, storage, and networking. This project helps you:
 
@@ -19,7 +19,7 @@ VMs provide isolated compute environments with configurable CPU, RAM, storage, a
 
 ---
 
-## 🧰 Technologies Used
+##  Technologies Used
 
 | Technology | Purpose |
 |------------|---------|
@@ -31,7 +31,7 @@ VMs provide isolated compute environments with configurable CPU, RAM, storage, a
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
